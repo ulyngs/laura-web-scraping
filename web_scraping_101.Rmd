@@ -1,0 +1,62 @@
+---
+title: "Laura scraping"
+author: "Ulrik Lyngs"
+date: '2022-03-14'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(rvest)
+library(xml2)
+```
+
+# Store some pages
+```{r}
+four_chan_page <- read_html("https://boards.4channel.org/w/")
+
+four_chan_page %>% 
+  write_xml("data/raw/four_chan_page.html")
+```
+
+## Iterate over more
+```{r}
+scrape_this <- tibble(
+  urls = c("https://boards.4channel.org/w/", "https://boards.4channel.org/an/")
+) %>% 
+  mutate(filename = janitor::make_clean_names(urls))
+
+
+scrape_stuff <- function(urls, filename){
+  current_page <- read_html(urls)
+  
+  current_page %>% 
+    write_xml(str_c("data/raw/", filename, ".html"))
+}
+
+walk2(scrape_this$urls, scrape_this$filename, scrape_stuff)
+
+```
+
+
+
+# Pull things out of pages
+```{r}
+some_page <- read_html("data/raw/https_boards_4channel_org_an.html")
+
+
+my_result <-tibble(
+  posts = some_page %>% html_elements("blockquote.postMessage") %>% html_text2()
+)
+
+# save out
+my_result %>% 
+  write_csv("data/processed/posts.csv")
+
+
+my_result %>% 
+  mutate(post_word_count = stringi::stri_count_words(posts)) %>% 
+  ggplot() +
+    geom_histogram(aes(x = post_word_count))
+```
+
